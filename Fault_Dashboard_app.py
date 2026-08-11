@@ -35,18 +35,27 @@ def find_col(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     return None
 
 
-@st.cache_data(ttl=300)
-def load_data(file) -> pd.DataFrame:
+def clean_and_impute_dataframe(df: pd.DataFrame, auto_impute: bool = True) -> Tuple[pd.DataFrame, dict]:
     """
-    Load an Excel file into a DataFrame and normalize date fields and derived time columns.
+    Sanitize text fields, convert pseudo-nulls to actual NaNs, cross-fill station identifiers,
+    and fill missing values in key categorical fields with appropriate default values.
+    Returns the cleaned DataFrame and a dictionary summary of cleaning actions taken.
     """
-    df = pd.read_excel(file)
+    df = df.copy()
 
-    # Clean column headers (strip whitespace and drop duplicate columns)
+    # Report tracking structure
+    report = {
+        "total_rows": len(df),
+        "total_imputed": 0,
+        "imputations": {},
+        "defaults_applied": {}
+    }
+
+    # 1. Clean column headers
     df.columns = df.columns.astype(str).str.strip()
     df = df.loc[:, ~df.columns.duplicated()]
 
-    # Standardize common column names flexibly
+    # Standardize column names flexibly
     col_mappings = {
         "Issue Date": ["Issue Date", "Issue date", "Created Date", "Date", "Ticket Date"],
         "Resolution Date": ["Resolution Date", "Resolution date", "Closed Date"],
@@ -68,7 +77,57 @@ def load_data(file) -> pd.DataFrame:
             if found and found != std_name:
                 df.rename(columns={found: std_name}, inplace=True)
 
-    # Convert date columns to datetime safely
+    # 2. Trim whitespaces and clean pseudo-null strings across object columns
+    null_variants = {"nan", "none", "null", "n/a", "na", "-", "", "nat", "undefined"}
+
+    for col in df.select_dtypes(include=["object", "string"]).columns:
+        series_str = df[col].astype(str).str.strip()
+        is_null_variant = series_str.str.lower().isin(null_variants)
+        df[col] = series_str.mask(is_null_variant, np.nan)
+
+    # 3. Cross-fill Station ID and Station Name if one is present and the other is missing
+    if "Station ID" in df.columns and "Station Name" in df.columns:
+        id_missing = df["Station ID"].isna() & df["Station Name"].notna()
+        name_missing = df["Station Name"].isna() & df["Station ID"].notna()
+
+        df.loc[id_missing, "Station ID"] = df.loc[id_missing, "Station Name"]
+        df.loc[name_missing, "Station Name"] = df.loc[name_missing, "Station ID"]
+
+    # 4. Standardize Casing for specific columns (Status, TAT Compliance)
+    if "Status" in df.columns and df["Status"].notna().any():
+        df["Status"] = df["Status"].astype(str).str.strip().str.title()
+
+    if "TAT Compliance" in df.columns and df["TAT Compliance"].notna().any():
+        tat_upper = df["TAT Compliance"].astype(str).str.upper().str.strip()
+        df["TAT Compliance"] = tat_upper.replace({
+            "YES": "Yes", "Y": "Yes", "TRUE": "Yes", "1": "Yes", "COMPLIANT": "Yes",
+            "NO": "No", "N": "No", "FALSE": "No", "0": "No", "NON-COMPLIANT": "No"
+        })
+
+    # 5. Missing value imputation defaults
+    default_imputations = {
+        "Station ID": "UNKNOWN_ID",
+        "Station Name": "Unknown Station",
+        "Zone": "Unassigned",
+        "Charger Make": "Unspecified",
+        "Severity": "Unspecified",
+        "Issue Type": "Uncategorized",
+        "Issue Sub-Type": "Unspecified",
+        "Status": "Unknown",
+        "TAT Compliance": "N/A"
+    }
+
+    if auto_impute:
+        for col, default_val in default_imputations.items():
+            if col in df.columns:
+                null_count = int(df[col].isna().sum())
+                if null_count > 0:
+                    df[col] = df[col].fillna(default_val)
+                    report["imputations"][col] = null_count
+                    report["defaults_applied"][col] = default_val
+                    report["total_imputed"] += null_count
+
+    # 6. Convert date columns to datetime safely
     for col in DATE_COLS:
         if col in df.columns:
             try:
@@ -76,7 +135,7 @@ def load_data(file) -> pd.DataFrame:
             except Exception:
                 df[col] = pd.to_datetime(df[col], errors="coerce")
 
-    # Derive useful time columns from Issue Date for filtering and reporting
+    # 7. Derive useful time columns from Issue Date for filtering and reporting
     if "Issue Date" in df.columns and df["Issue Date"].notna().any():
         issue_dt = df["Issue Date"]
         df["Issue Day"] = issue_dt.dt.date
@@ -86,7 +145,17 @@ def load_data(file) -> pd.DataFrame:
         quarter_str = issue_dt.dt.year.astype(str) + "-Q" + issue_dt.dt.quarter.astype(str)
         df["Quarter"] = quarter_str.where(issue_dt.notna(), np.nan)
 
-    return df
+    return df, report
+
+
+@st.cache_data(ttl=300)
+def load_data(file, auto_impute: bool = True) -> Tuple[pd.DataFrame, dict]:
+    """
+    Load an Excel file into a DataFrame, clean and impute missing values, and normalize date fields.
+    """
+    df = pd.read_excel(file)
+    cleaned_df, report = clean_and_impute_dataframe(df, auto_impute=auto_impute)
+    return cleaned_df, report
 
 
 def get_repetitive_faults(df: pd.DataFrame) -> pd.DataFrame:
@@ -374,6 +443,13 @@ def main():
     file_path = st.sidebar.text_input("File path on this machine", value=default_file, key="input_file_path")
     uploaded = st.sidebar.file_uploader("...or upload a file", type=["xlsx"], key="input_file_uploader")
 
+    st.sidebar.header("Data Cleaning Options")
+    enable_auto_clean = st.sidebar.checkbox(
+        "Auto-clean & Impute Missing Values",
+        value=True,
+        help="Automatically fill missing categorical fields (e.g. Zone, Charger Make, Status) and normalize whitespace/casing before loading into dashboard."
+    )
+
     if st.sidebar.button("Refresh data", key="btn_refresh"):
         try:
             st.cache_data.clear()
@@ -394,7 +470,7 @@ def main():
         return
 
     try:
-        df = load_data(source)
+        df, cleaning_stats = load_data(source, auto_impute=enable_auto_clean)
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return
@@ -402,6 +478,26 @@ def main():
     if df.empty:
         st.warning("Loaded file is empty.")
         return
+
+    # Data Quality & Cleaning Summary
+    if cleaning_stats and cleaning_stats.get("total_imputed", 0) > 0:
+        with st.expander("🧹 Data Quality & Cleaning Summary", expanded=False):
+            st.markdown(f"**Processed Records:** {cleaning_stats['total_rows']} | **Total Missing Values Imputed:** {cleaning_stats['total_imputed']}")
+            imputations = cleaning_stats.get("imputations", {})
+            if imputations:
+                imp_rows = [
+                    {
+                        "Column Name": col,
+                        "Missing Values Imputed": count,
+                        "Default Value Applied": cleaning_stats.get("defaults_applied", {}).get(col, "N/A")
+                    }
+                    for col, count in imputations.items() if count > 0
+                ]
+                if imp_rows:
+                    safe_dataframe(pd.DataFrame(imp_rows))
+    elif enable_auto_clean:
+        with st.expander("🧹 Data Quality & Cleaning Summary", expanded=False):
+            st.success("✅ Data quality check complete: No missing values required imputation.")
 
     filtered = apply_filters(df)
 
