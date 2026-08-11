@@ -2,3 +2,5 @@ streamlit
 pandas
 plotly
 openpyxl
+reportlab
+python-pptx
