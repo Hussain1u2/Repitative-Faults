@@ -14,15 +14,27 @@ DEFAULT_PATH = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("FAULT_SHEET
 DATE_COLS = ["Issue Date", "Resolution Date", "Restoration Date"]
 
 
-def safe_dataframe(df_to_show: pd.DataFrame):
-    """Safely display dataframe across different Streamlit versions."""
-    try:
-        st.dataframe(df_to_show, use_container_width=True, hide_index=True)
-    except TypeError:
+def safe_dataframe(df_to_show: pd.DataFrame, show_count: bool = True):
+    """Safely display dataframe across different Streamlit versions with raw table count indicator."""
+    if df_to_show is not None:
+        if show_count and not df_to_show.empty:
+            st.caption(f"**Raw Table Count:** {len(df_to_show):,} rows")
         try:
-            st.dataframe(df_to_show, use_container_width=True)
-        except Exception:
-            st.dataframe(df_to_show)
+            st.dataframe(df_to_show, use_container_width=True, hide_index=True)
+        except TypeError:
+            try:
+                st.dataframe(df_to_show, use_container_width=True)
+            except Exception:
+                st.dataframe(df_to_show)
+
+
+def add_total_count_row(df: pd.DataFrame, label_col: str, count_col: str) -> pd.DataFrame:
+    """Appends a TOTAL RAW COUNT summary row at the bottom of a count summary DataFrame."""
+    if df.empty or count_col not in df.columns or label_col not in df.columns:
+        return df
+    total_val = df[count_col].sum()
+    total_row = pd.DataFrame([{label_col: "TOTAL RAW COUNT", count_col: total_val}])
+    return pd.concat([df, total_row], ignore_index=True)
 
 
 def find_col(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
@@ -307,32 +319,51 @@ def render_charts(df: pd.DataFrame, top_stations: pd.DataFrame):
 
     if "Zone" in df.columns and not df.empty:
         zone_counts = df["Zone"].dropna().value_counts().reset_index()
-        zone_counts.columns = ["Zone", "Faults"]
+        zone_counts.columns = ["Zone", "Fault Count"]
         if not zone_counts.empty:
             fig = px.bar(
                 zone_counts,
                 x="Zone",
-                y="Faults",
+                y="Fault Count",
                 title="Region-wise Faults (Zone)",
                 text_auto=True,
                 color_discrete_sequence=["#1f77b4"]
             )
-            fig.update_layout(xaxis_title="Zone", yaxis_title="Faults", margin=dict(l=20, r=20, t=40, b=20))
+            fig.update_layout(xaxis_title="Zone", yaxis_title="Fault Count", margin=dict(l=20, r=20, t=40, b=20))
             left.plotly_chart(fig, use_container_width=True)
+            with left.expander("Zone Fault Counts Table", expanded=True):
+                safe_dataframe(add_total_count_row(zone_counts, "Zone", "Fault Count"))
 
     if "Charger Make" in df.columns and not df.empty:
         make_counts = df["Charger Make"].dropna().value_counts().reset_index()
-        make_counts.columns = ["Charger Make", "Faults"]
+        make_counts.columns = ["Charger Make", "Fault Count"]
         if not make_counts.empty:
             fig = px.pie(
                 make_counts,
                 names="Charger Make",
-                values="Faults",
+                values="Fault Count",
                 title="Faults by Charger Company",
                 hole=0.3
             )
             fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
             right.plotly_chart(fig, use_container_width=True)
+            with right.expander("Charger Make Fault Counts Table", expanded=True):
+                safe_dataframe(add_total_count_row(make_counts, "Charger Make", "Fault Count"))
+
+    c1, c2 = st.columns(2)
+    if "Severity" in df.columns and not df.empty:
+        sev_counts = df["Severity"].dropna().value_counts().reset_index()
+        sev_counts.columns = ["Severity", "Fault Count"]
+        if not sev_counts.empty:
+            with c1.expander("Severity Fault Counts Table", expanded=True):
+                safe_dataframe(add_total_count_row(sev_counts, "Severity", "Fault Count"))
+
+    if "Status" in df.columns and not df.empty:
+        status_counts = df["Status"].dropna().value_counts().reset_index()
+        status_counts.columns = ["Status", "Fault Count"]
+        if not status_counts.empty:
+            with c2.expander("Ticket Status Counts Table", expanded=True):
+                safe_dataframe(add_total_count_row(status_counts, "Status", "Fault Count"))
 
     if not top_stations.empty and "Station Name" in top_stations.columns:
         fig = px.bar(
@@ -394,8 +425,8 @@ def render_time_reports(df: pd.DataFrame):
         )
         fig.update_layout(xaxis_title="Date", yaxis_title="Faults", margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
-        # Show latest daily reports first in table view
-        safe_dataframe(daily.sort_values("Time", ascending=False))
+        # Show latest daily reports first in table view with total raw count summary
+        safe_dataframe(add_total_count_row(daily.sort_values("Time", ascending=False), "Time", "Faults"))
 
     st.subheader("Month-wise Faults")
     if monthly.empty:
@@ -411,8 +442,8 @@ def render_time_reports(df: pd.DataFrame):
         )
         fig.update_layout(xaxis_title="Month (YYYY-MM)", yaxis_title="Faults", margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
-        # Show latest monthly reports first in table view
-        safe_dataframe(monthly.sort_values("Time", ascending=False))
+        # Show latest monthly reports first in table view with total raw count summary
+        safe_dataframe(add_total_count_row(monthly.sort_values("Time", ascending=False), "Time", "Faults"))
 
     st.subheader("Quarter-wise Faults")
     if quarterly.empty:
@@ -428,8 +459,8 @@ def render_time_reports(df: pd.DataFrame):
         )
         fig.update_layout(xaxis_title="Quarter (YYYY-Q#)", yaxis_title="Faults", margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig, use_container_width=True)
-        # Show latest quarterly reports first in table view
-        safe_dataframe(quarterly.sort_values("Time", ascending=False))
+        # Show latest quarterly reports first in table view with total raw count summary
+        safe_dataframe(add_total_count_row(quarterly.sort_values("Time", ascending=False), "Time", "Faults"))
 
 
 def main():
@@ -481,7 +512,7 @@ def main():
 
     # Data Quality & Cleaning Summary
     if cleaning_stats and cleaning_stats.get("total_imputed", 0) > 0:
-        with st.expander("🧹 Data Quality & Cleaning Summary", expanded=False):
+        with st.expander("Data Quality & Cleaning Summary", expanded=False):
             st.markdown(f"**Processed Records:** {cleaning_stats['total_rows']} | **Total Missing Values Imputed:** {cleaning_stats['total_imputed']}")
             imputations = cleaning_stats.get("imputations", {})
             if imputations:
@@ -496,8 +527,8 @@ def main():
                 if imp_rows:
                     safe_dataframe(pd.DataFrame(imp_rows))
     elif enable_auto_clean:
-        with st.expander("🧹 Data Quality & Cleaning Summary", expanded=False):
-            st.success("✅ Data quality check complete: No missing values required imputation.")
+        with st.expander("Data Quality & Cleaning Summary", expanded=False):
+            st.success("Data quality check complete: No missing values required imputation.")
 
     filtered = apply_filters(df)
 
