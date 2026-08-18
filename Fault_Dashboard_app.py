@@ -22,134 +22,144 @@ st.set_page_config(
 
 DEFAULT_PATH = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("FAULT_SHEET_PATH", "")
 DATE_COLS = ["Issue Date", "Resolution Date", "Restoration Date"]
-CORPORATE_PALETTE = ["#1E3A8A", "#0284C7", "#0D9488", "#F59E0B", "#E11D48", "#8B5CF6", "#64748B"]
+CORPORATE_PALETTE = ["#1E3A8A", "#0284C7", "#0D9488", "#D97706", "#DC2626", "#6D28D9", "#475569"]
 
 
 def inject_custom_css():
     st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
         .main .block-container {
-            padding-top: 1.2rem;
+            padding-top: 1rem;
             padding-bottom: 2rem;
-            max-width: 96%;
+            max-width: 98%;
         }
-        .header-banner {
-            background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
+
+        .header-container {
+            background-color: #0F172A;
             color: #FFFFFF;
-            padding: 1.5rem 2rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.12);
+            padding: 1.1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
         }
+
         .header-title {
-            font-size: 2.1rem;
+            font-size: 1.5rem;
             font-weight: 700;
             margin: 0;
             color: #FFFFFF;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
         }
+
         .header-subtitle {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: #94A3B8;
-            margin-top: 0.3rem;
-            margin-bottom: 0.5rem;
+            margin-top: 0.15rem;
         }
-        .header-badge {
-            background: rgba(56, 189, 248, 0.15);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            color: #38BDF8;
-            padding: 0.3rem 0.85rem;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            display: inline-block;
+
+        .header-pill {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #E2E8F0;
+            padding: 0.35rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
         }
+
         div[data-testid="stMetric"] {
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
-            border-radius: 10px;
-            padding: 1.1rem 1.25rem;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-top: 3px solid #1E3A8A;
+            border-radius: 8px;
+            padding: 0.9rem 1.1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
-        div[data-testid="stMetric"]:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-            border-color: #CBD5E1;
-        }
+
         div[data-testid="stMetricLabel"] {
             font-weight: 600;
             color: #64748B !important;
-            font-size: 0.85rem !important;
+            font-size: 0.78rem !important;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
         }
+
         div[data-testid="stMetricValue"] {
             font-weight: 700;
             color: #0F172A !important;
-            font-size: 1.85rem !important;
+            font-size: 1.65rem !important;
+            margin-top: 0.2rem;
         }
-        .executive-card {
+
+        .insights-card {
             background-color: #F8FAFC;
             border: 1px solid #E2E8F0;
-            border-left: 5px solid #1E3A8A;
-            border-radius: 8px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+            border-left: 4px solid #1E3A8A;
+            border-radius: 6px;
+            padding: 0.9rem 1.25rem;
+            margin-bottom: 1.25rem;
         }
-        .executive-card h4 {
-            color: #1E3A8A;
+
+        .insights-card h4 {
+            color: #0F172A;
             margin-top: 0;
-            margin-bottom: 0.75rem;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-        .executive-card ul {
-            margin: 0;
-            padding-left: 1.25rem;
-            color: #334155;
-        }
-        .executive-card li {
             margin-bottom: 0.5rem;
-            line-height: 1.5;
-            font-size: 0.95rem;
-        }
-        .mode-banner {
-            background-color: #EFF6FF;
-            border: 1px solid #BFDBFE;
-            color: #1E40AF;
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
             font-weight: 600;
             font-size: 0.9rem;
-            margin-bottom: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
+
+        .insights-card ul {
+            margin: 0;
+            padding-left: 1.1rem;
+            color: #334155;
+        }
+
+        .insights-card li {
+            margin-bottom: 0.35rem;
+            line-height: 1.45;
+            font-size: 0.875rem;
+        }
+
         .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-            border-bottom: 2px solid #E2E8F0;
+            gap: 6px;
+            border-bottom: 1px solid #E2E8F0;
+            margin-bottom: 1rem;
         }
+
         .stTabs [data-baseweb="tab"] {
-            height: 45px;
-            white-space: pre-wrap;
-            border-radius: 8px 8px 0 0;
-            font-weight: 600;
+            height: 38px;
+            border-radius: 6px 6px 0 0;
+            font-weight: 500;
+            font-size: 0.85rem;
             color: #64748B;
-            padding: 0 18px;
+            padding: 0 16px;
         }
+
         .stTabs [aria-selected="true"] {
-            background-color: #1E3A8A !important;
-            color: #FFFFFF !important;
+            background-color: #FFFFFF !important;
+            color: #1E3A8A !important;
+            font-weight: 600 !important;
+            border-bottom: 2px solid #1E3A8A !important;
         }
+
         section[data-testid="stSidebar"] {
             background-color: #F8FAFC;
             border-right: 1px solid #E2E8F0;
         }
+
         .stDataFrame {
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
             border: 1px solid #E2E8F0;
         }
@@ -159,13 +169,19 @@ def inject_custom_css():
 
 def apply_plotly_theme(fig: go.Figure, title: str = "", height: Optional[int] = None) -> go.Figure:
     fig.update_layout(
-        title=dict(text=f"<b>{title}</b>" if title else "", font=dict(size=15, color="#0F172A", family="Inter, system-ui, sans-serif")),
-        font=dict(family="Inter, system-ui, sans-serif", color="#334155"),
+        title=dict(
+            text=f"<b>{title}</b>" if title else "",
+            font=dict(size=13, color="#0F172A", family="Inter, sans-serif"),
+            x=0.01,
+            xanchor="left"
+        ),
+        font=dict(family="Inter, sans-serif", color="#475569", size=11),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(248,250,252,0.5)",
-        margin=dict(l=20, r=20, t=45 if title else 20, b=20),
-        xaxis=dict(gridcolor="#E2E8F0", zerolinecolor="#CBD5E1"),
-        yaxis=dict(gridcolor="#E2E8F0", zerolinecolor="#CBD5E1"),
+        plot_bgcolor="rgba(248,250,252,0.6)",
+        margin=dict(l=15, r=15, t=38 if title else 15, b=15),
+        xaxis=dict(gridcolor="#F1F5F9", zerolinecolor="#CBD5E1", showline=True, linecolor="#E2E8F0"),
+        yaxis=dict(gridcolor="#F1F5F9", zerolinecolor="#CBD5E1", showline=True, linecolor="#E2E8F0"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     if height:
         fig.update_layout(height=height)
@@ -694,7 +710,7 @@ def render_kpis(df: pd.DataFrame, repetitive: pd.DataFrame):
     else:
         col2.metric("Open / Pending Tickets", "0")
 
-    col3.metric("Repetitive Fault Hotspots", f"{len(repetitive):,}")
+    col3.metric("Repetitive Hotspots", f"{len(repetitive):,}")
 
     if "TAT Compliance" in df.columns and len(df):
         valid_tat = df["TAT Compliance"].dropna()
@@ -719,20 +735,15 @@ def main():
     view_mode = st.sidebar.radio(
         "Dashboard View Mode",
         ["Executive Presentation Mode", "Operational Details Mode"],
-        index=0,
-        help="Switch view modes: Presentation Mode provides boardroom summaries and high-impact key insights."
+        index=0
     )
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("Data Source")
     file_path = st.sidebar.text_input("File path on machine", value=default_file, key="input_file_path")
-    uploaded = st.sidebar.file_uploader("...or upload Excel file", type=["xlsx"], key="input_file_uploader")
+    uploaded = st.sidebar.file_uploader("Upload Excel file", type=["xlsx"], key="input_file_uploader")
 
-    enable_auto_clean = st.sidebar.checkbox(
-        "Auto-clean & Impute Missing Data",
-        value=True,
-        help="Automatically sanitize whitespaces, normalize column headers, and fill missing fields."
-    )
+    enable_auto_clean = st.sidebar.checkbox("Auto-clean & Impute Missing Data", value=True)
 
     if st.sidebar.button("Refresh Data Cache", key="btn_refresh"):
         try:
@@ -799,23 +810,14 @@ def main():
         date_badge_str = "Date Scope: Full Historical Dataset"
 
     st.markdown(f"""
-    <div class="header-banner">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1 class="header-title">Charger Fault Executive Dashboard</h1>
-                <div class="header-subtitle">Boardroom Operations & Reliability Analytics Platform</div>
-                <div class="header-badge">Showing {len(filtered):,} of {len(df):,} Total Records | {date_badge_str}</div>
-            </div>
+    <div class="header-container">
+        <div>
+            <h1 class="header-title">Charger Fault Executive Dashboard</h1>
+            <div class="header-subtitle">Boardroom Operations & Reliability Analytics Platform</div>
         </div>
+        <div class="header-pill">Showing {len(filtered):,} of {len(df):,} Total Records | {date_badge_str}</div>
     </div>
     """, unsafe_allow_html=True)
-
-    if "Presentation" in view_mode:
-        st.markdown("""
-        <div class="mode-banner">
-            <div><strong>Executive Presentation Mode Active:</strong> Showing high-impact boardroom indicators and strategic takeaways.</div>
-        </div>
-        """, unsafe_allow_html=True)
 
     tab_overview, tab_time, tab_zone_oem, tab_repetitive, tab_raw = st.tabs([
         "Executive Overview",
@@ -826,15 +828,14 @@ def main():
     ])
 
     with tab_overview:
-        st.subheader("Key Operational Performance Indicators")
         render_kpis(filtered, repetitive)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 0.8rem;'></div>", unsafe_allow_html=True)
 
         insights = generate_executive_insights(filtered, repetitive)
         st.markdown(f"""
-        <div class="executive-card">
-            <h4>Executive Meeting Takeaways & Key Takeouts</h4>
+        <div class="insights-card">
+            <h4>Executive Meeting Takeaways</h4>
             <ul>
                 {''.join(f'<li>{i}</li>' for i in insights)}
             </ul>
@@ -856,7 +857,7 @@ def main():
                         text_auto=True,
                         color_discrete_sequence=[CORPORATE_PALETTE[0]]
                     )
-                    apply_plotly_theme(fig, "Fault Distribution by Region (Zone)", height=380)
+                    apply_plotly_theme(fig, "Fault Distribution by Region (Zone)", height=360)
                     st.plotly_chart(fig, use_container_width=True)
 
         with col_right:
@@ -869,16 +870,16 @@ def main():
                         names="Charger Make",
                         values="Fault Count",
                         title="Fault Share by Charger OEM",
-                        hole=0.4,
+                        hole=0.45,
                         color_discrete_sequence=CORPORATE_PALETTE
                     )
-                    apply_plotly_theme(fig, "Fault Share by Charger OEM", height=380)
+                    apply_plotly_theme(fig, "Fault Share by Charger OEM", height=360)
                     st.plotly_chart(fig, use_container_width=True)
 
     with tab_time:
         daily, monthly, quarterly = get_time_aggregates(filtered)
 
-        st.subheader("Month-wise Fault Volume")
+        st.subheader("Monthly Fault Trends")
         if monthly.empty:
             st.info("No Issue Date data available for monthly trend analysis.")
         else:
@@ -890,12 +891,12 @@ def main():
                 text_auto=True,
                 color_discrete_sequence=[CORPORATE_PALETTE[1]]
             )
-            apply_plotly_theme(fig, "Monthly Fault Volume", height=350)
+            apply_plotly_theme(fig, "Monthly Fault Volume", height=320)
             st.plotly_chart(fig, use_container_width=True)
-            with st.expander("View Monthly Aggregation Table", expanded=False):
+            with st.expander("View Monthly Summary Table", expanded=False):
                 safe_dataframe(add_total_count_row(monthly.sort_values("Time", ascending=False), "Time", "Faults"))
 
-        st.subheader("Quarter-wise Fault Volume")
+        st.subheader("Quarterly Fault Trends")
         if quarterly.empty:
             st.info("No Issue Date data available for quarterly trend analysis.")
         else:
@@ -907,12 +908,12 @@ def main():
                 text_auto=True,
                 color_discrete_sequence=[CORPORATE_PALETTE[2]]
             )
-            apply_plotly_theme(fig, "Quarterly Fault Volume", height=350)
+            apply_plotly_theme(fig, "Quarterly Fault Volume", height=320)
             st.plotly_chart(fig, use_container_width=True)
-            with st.expander("View Quarterly Aggregation Table", expanded=False):
+            with st.expander("View Quarterly Summary Table", expanded=False):
                 safe_dataframe(add_total_count_row(quarterly.sort_values("Time", ascending=False), "Time", "Faults"))
 
-        st.subheader("Daily Fault Volume")
+        st.subheader("Daily Fault Trends")
         if daily.empty:
             st.info("No Issue Date data available for daily trend analysis.")
         else:
@@ -924,9 +925,9 @@ def main():
                 markers=True,
                 color_discrete_sequence=[CORPORATE_PALETTE[0]]
             )
-            apply_plotly_theme(fig, "Daily Fault Trend", height=350)
+            apply_plotly_theme(fig, "Daily Fault Trend", height=320)
             st.plotly_chart(fig, use_container_width=True)
-            with st.expander("View Daily Aggregation Table", expanded=False):
+            with st.expander("View Daily Summary Table", expanded=False):
                 safe_dataframe(add_total_count_row(daily.sort_values("Time", ascending=False), "Time", "Faults"))
 
     with tab_zone_oem:
@@ -940,13 +941,13 @@ def main():
                 safe_dataframe(add_total_count_row(z_counts, "Zone", "Fault Count"))
 
         with col_b:
-            st.subheader("Charger OEM / Company Breakdown")
+            st.subheader("Charger OEM Breakdown")
             if "Charger Make" in filtered.columns and not filtered.empty:
                 m_counts = filtered["Charger Make"].dropna().value_counts().reset_index()
                 m_counts.columns = ["Charger Make", "Fault Count"]
                 safe_dataframe(add_total_count_row(m_counts, "Charger Make", "Fault Count"))
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         c_sev, c_stat = st.columns(2)
 
         with c_sev:
@@ -963,8 +964,8 @@ def main():
                 status_counts.columns = ["Status", "Fault Count"]
                 safe_dataframe(add_total_count_row(status_counts, "Status", "Fault Count"))
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("Top 5 Issue Categories & Sub-Types")
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+        st.subheader("Top Issue Categories & Sub-Types")
         issue_breakdown = get_top_issue_breakdown(filtered)
         if issue_breakdown.empty:
             st.info("No 'Issue Type' or 'Issue Sub-Type' columns present in dataset.")
@@ -972,7 +973,7 @@ def main():
             for issue_type in issue_breakdown["Issue Type"].unique():
                 group = issue_breakdown[issue_breakdown["Issue Type"] == issue_type]
                 total = group["Issue Type Total"].iloc[0]
-                with st.expander(f"{issue_type} — {total} total faults"):
+                with st.expander(f"{issue_type} ({total} faults)"):
                     fig = px.bar(
                         group,
                         x="Sub-Type Count",
@@ -982,7 +983,7 @@ def main():
                         text_auto=True,
                         color_discrete_sequence=[CORPORATE_PALETTE[4]]
                     )
-                    apply_plotly_theme(fig, f"Sub-Type Breakdown for {issue_type}", height=max(250, len(group) * 35))
+                    apply_plotly_theme(fig, f"Sub-Type Breakdown for {issue_type}", height=max(220, len(group) * 32))
                     fig.update_layout(yaxis=dict(autorange="reversed", title="Issue Sub-Type"), xaxis_title="Sub-Type Count")
                     st.plotly_chart(fig, use_container_width=True)
                     safe_dataframe(group[["Issue Sub-Type", "Sub-Type Count"]])
@@ -1001,13 +1002,13 @@ def main():
                 text_auto=True,
                 color_discrete_sequence=[CORPORATE_PALETTE[0]]
             )
-            apply_plotly_theme(fig, "Top 25 Stations by Total Faults", height=max(400, len(top_stations) * 26))
+            apply_plotly_theme(fig, "Top 25 Stations by Total Faults", height=max(380, len(top_stations) * 25))
             fig.update_layout(yaxis=dict(autorange="reversed", title="Station Name"), xaxis_title="Fault Count")
             st.plotly_chart(fig, use_container_width=True)
-            with st.expander("View Hotspot Stations Table", expanded=False):
+            with st.expander("View Hotspot Stations Summary Table", expanded=False):
                 safe_dataframe(top_stations)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         st.subheader("Repetitive Fault Pairs (Same Station + Issue Sub-Type >= 2 Times)")
         if repetitive.empty:
             st.info("No repetitive faults found for current filter selection.")
@@ -1033,7 +1034,7 @@ def main():
         else:
             st.success("Data quality check complete: 100% complete records (no missing values imputed).")
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
         st.subheader("Filtered Raw Dataset")
         display_df = filtered.sort_values("Issue Date", ascending=False) if "Issue Date" in filtered.columns else filtered
         safe_dataframe(display_df)
